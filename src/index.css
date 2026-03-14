@@ -92,3 +92,37 @@ html, body, #root {
   border-bottom-right-radius: 12px !important;
   border-bottom: none !important;
 }
+
+.guide-map-theme {
+  background: #ececeb !important;
+}
+
+.guide-map-theme .leaflet-tile-pane {
+  filter: grayscale(1) contrast(1.25) brightness(1.08);
+  opacity: 0.92;
+}
+
+.guide-map-theme .leaflet-tile-container img {
+  image-rendering: auto;
+}
+
+.guide-map-theme .leaflet-overlay-pane,
+.guide-map-theme .leaflet-shadow-pane,
+.guide-map-theme .leaflet-popup-pane {
+  filter: grayscale(1);
+}
+
+.guide-map-theme::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to right, rgba(255,255,255,0.18) 0, rgba(255,255,255,0.18) 1px, transparent 1px, transparent 120px),
+    linear-gradient(to bottom, rgba(255,255,255,0.14) 0, rgba(255,255,255,0.14) 1px, transparent 1px, transparent 120px),
+    radial-gradient(circle at 18% 26%, rgba(0,0,0,0.05) 0 9px, transparent 10px),
+    radial-gradient(circle at 72% 58%, rgba(0,0,0,0.06) 0 12px, transparent 13px),
+    linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+  mix-blend-mode: multiply;
+  z-index: 350;
+}

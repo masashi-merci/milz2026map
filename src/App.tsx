@@ -65,7 +65,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const AI_CACHE_PREFIX = 'milz_ai_cache_v2';
+const AI_CACHE_PREFIX = 'milz_ai_cache_v3';
 const GEO_CACHE_PREFIX = 'milz_geo_cache_v1';
 
 function normalizeCacheText(value: string) {
@@ -198,33 +198,15 @@ function MapEvents({
 
 const MAP_STYLES = {
   original: {
-    name: 'スタンダード',
-    description: '標準的な地図表示',
+    name: 'オリジナル',
+    description: '標準の地図表示',
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   },
-  paper: {
-    name: 'ペーパー',
-    description: '温かみのある紙のような質感',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-  },
-  midnight: {
-    name: 'ミッドナイト',
-    description: 'コントラストの効いたダークモード',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-  },
-  stylish_mono: {
-    name: 'スタイリッシュ・モノ',
-    description: 'イラストのような洗練されたモノクロデザイン',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-  },
-  blueprint: {
-    name: 'ブループリント',
-    description: '設計図のような高コントラスト・デザイン',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  guide_mono: {
+    name: 'ガイドデザイン',
+    description: '案内図のようなモノトーンデザイン',
+    url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
   }
 };
@@ -245,7 +227,7 @@ const getCustomIcon = (category: string, mapStyle: string) => {
   const config = CATEGORY_CONFIG[category] || CATEGORY_CONFIG['その他'];
   const Icon = config.icon;
   
-  const isIllustrative = mapStyle === 'stylish_mono' || mapStyle === 'blueprint';
+  const isIllustrative = mapStyle === 'guide_mono';
   
   const html = renderToStaticMarkup(
     <div style={{
@@ -1524,10 +1506,7 @@ export default function App() {
                 zoom={13} 
                 className={cn(
                   "h-full w-full transition-all duration-700",
-                  mapStyle === 'stylish_mono' && "grayscale contrast-[1.2] brightness-[1.05]",
-                  mapStyle === 'blueprint' && "grayscale contrast-[2] brightness-[0.9] invert-[0.05]",
-                  mapStyle === 'paper' && "sepia-[0.3] saturate-[0.8] contrast-[1.1]",
-                  mapStyle === 'midnight' && "brightness-[0.9] contrast-[1.2] saturate-[0.5]"
+                  mapStyle === 'guide_mono' && "guide-map-theme"
                 )}
                 zoomControl={false}
               >

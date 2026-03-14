@@ -99,8 +99,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
       const prompt = [
         'You are a concise bilingual local trends assistant.',
-        `For the location "${location}" and category "${category}", provide exactly 5 current local trends.`,
-        'Use specific local area names, districts, landmarks, facilities, or venue names whenever possible.',
+        `For the location "${location}" and category "${category}", provide exactly 5 current local trends that match the selected category.`,
+        'Use specific local area names, districts, landmarks, facilities, or venue names whenever possible. Never use abstract titles like cafe, shopping, sightseeing, fruit picking, or winery by themselves.',
         'If an exact venue is uncertain, prefer a concrete area name over an abstract topic.',
         'Prefer current search interest, seasonal movement, recurring events, transit, food, shopping, and attractions.',
         'Keep descriptions short and practical.',
@@ -124,7 +124,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
       const parsed = JSON.parse(response.text || '{}');
       if (Array.isArray(parsed?.trends)) {
-        parsed.trends = concretizeTrends(location, parsed.trends as TrendItem[]);
+        parsed.trends = concretizeTrends(location, category, parsed.trends as TrendItem[]);
       }
       const payload = JSON.stringify({
         ...parsed,
