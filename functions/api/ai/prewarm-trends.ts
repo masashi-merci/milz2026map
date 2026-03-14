@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type } from '@google/genai';
+import { concretizeTrends, type TrendItem } from '../../_shared/trend-place-map';
 
 export interface Env {
   GEMINI_API_KEY: string;
@@ -98,7 +99,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
       const prompt = [
         'You are a concise bilingual local trends assistant.',
-        `For the location "${location}" and category "${category}", provide exactly 5 current local trend topics.`,
+        `For the location "${location}" and category "${category}", provide exactly 5 current local trends.`,
+        'Use specific local area names, districts, landmarks, facilities, or venue names whenever possible.',
+        'If an exact venue is uncertain, prefer a concrete area name over an abstract topic.',
         'Prefer current search interest, seasonal movement, recurring events, transit, food, shopping, and attractions.',
         'Keep descriptions short and practical.',
         'Return JSON only.',
@@ -120,6 +123,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       );
 
       const parsed = JSON.parse(response.text || '{}');
+      if (Array.isArray(parsed?.trends)) {
+        parsed.trends = concretizeTrends(location, parsed.trends as TrendItem[]);
+      }
       const payload = JSON.stringify({
         ...parsed,
         generatedAt: new Date().toISOString(),
@@ -135,7 +141,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         status: 200,
         headers: {
           ...corsHeaders,
-          'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=300',
+          'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=21600',
           'X-AI-Cache': 'PREWARM',
         },
       });

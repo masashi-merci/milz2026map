@@ -65,7 +65,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const AI_CACHE_PREFIX = 'milz_ai_cache_v1';
+const AI_CACHE_PREFIX = 'milz_ai_cache_v2';
 const GEO_CACHE_PREFIX = 'milz_geo_cache_v1';
 
 function normalizeCacheText(value: string) {
@@ -1192,7 +1192,7 @@ export default function App() {
       }
 
       const results = await response.json();
-      writeCache(cacheKey, results, aiMode === 'recommend' ? 1000 * 60 * 60 * 24 * 7 : 1000 * 60 * 60 * 24);
+      writeCache(cacheKey, results, aiMode === 'recommend' ? 1000 * 60 * 60 * 24 * 14 : 1000 * 60 * 60 * 24);
       setAiResults(results);
     } catch (error) {
       console.error('AI error:', error);
