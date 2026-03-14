@@ -94,22 +94,18 @@ html, body, #root {
 }
 
 .guide-map-theme {
-  background: #ececeb !important;
+  background: #ece8df !important;
 }
 
 .guide-map-theme .leaflet-tile-pane {
-  filter: grayscale(1) contrast(1.25) brightness(1.08);
-  opacity: 0.92;
-}
-
-.guide-map-theme .leaflet-tile-container img {
-  image-rendering: auto;
+  filter: saturate(0.78) sepia(0.12) brightness(1.02) contrast(0.98);
+  opacity: 0.98;
 }
 
 .guide-map-theme .leaflet-overlay-pane,
 .guide-map-theme .leaflet-shadow-pane,
 .guide-map-theme .leaflet-popup-pane {
-  filter: grayscale(1);
+  filter: none;
 }
 
 .guide-map-theme::before {
@@ -118,11 +114,9 @@ html, body, #root {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(to right, rgba(255,255,255,0.18) 0, rgba(255,255,255,0.18) 1px, transparent 1px, transparent 120px),
-    linear-gradient(to bottom, rgba(255,255,255,0.14) 0, rgba(255,255,255,0.14) 1px, transparent 1px, transparent 120px),
-    radial-gradient(circle at 18% 26%, rgba(0,0,0,0.05) 0 9px, transparent 10px),
-    radial-gradient(circle at 72% 58%, rgba(0,0,0,0.06) 0 12px, transparent 13px),
-    linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
-  mix-blend-mode: multiply;
+    linear-gradient(180deg, rgba(255,250,242,0.10), rgba(235,229,220,0.06)),
+    radial-gradient(circle at 20% 18%, rgba(255,255,255,0.10) 0 14px, transparent 15px),
+    radial-gradient(circle at 78% 70%, rgba(0,0,0,0.03) 0 12px, transparent 13px);
+  opacity: 0.35;
   z-index: 350;
 }

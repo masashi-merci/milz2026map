@@ -153,7 +153,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       prompt = [
         'You are a concise bilingual local trends assistant.',
         `For the location "${location}" and category "${category}", provide exactly 5 local trends.`,
-        'Use specific local area names, districts, landmarks, facilities, or venue names whenever possible. Never use abstract titles like cafe, shopping, sightseeing, fruit picking, or winery by themselves.',
+        'Abstract keywords are allowed, but every trend must be convertible to specific local names. Pair topics like cafe hopping or grape picking with actual areas, facilities, or venue names.',
         'If an exact venue is uncertain, prefer a concrete area name over an abstract topic.',
         'Favor durable local interests, seasonal movement, events, transit, food, and shopping themes.',
         'Keep descriptions short and practical.',

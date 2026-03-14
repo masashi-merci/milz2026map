@@ -152,6 +152,10 @@ interface AIResults {
     description_en: string;
     category: string;
     popularity: number;
+    keyword_ja?: string;
+    keyword_en?: string;
+    examples_ja?: string[];
+    examples_en?: string[];
   }[];
 }
 
@@ -206,7 +210,7 @@ const MAP_STYLES = {
   guide_mono: {
     name: 'ガイドデザイン',
     description: '案内図のようなモノトーンデザイン',
-    url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
+    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
   }
 };
@@ -1582,7 +1586,7 @@ export default function App() {
                       html: renderToStaticMarkup(
                         <div className={cn(
                           "w-10 h-10 rounded-full flex items-center justify-center border-4 shadow-xl animate-bounce",
-                          (mapStyle === 'stylish_mono' || mapStyle === 'blueprint') 
+                          false 
                             ? "bg-black border-black" 
                             : "bg-emerald-500 border-white"
                         )}>
@@ -1849,17 +1853,28 @@ export default function App() {
                       <div className="grid grid-cols-1 gap-4">
                         {aiResults.trends.map((trend, i) => (
                           <div key={i} className="bg-white p-6 rounded-3xl border border-stone-100 shadow-sm">
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <TrendingUp className="w-4 h-4 text-emerald-500" />
-                                <h4 className="font-black text-stone-900">
-                                  {aiTrendLanguage === 'ja' ? trend.topic_ja : trend.topic_en}
-                                </h4>
+                            <div className="flex items-start justify-between mb-2 gap-3">
+                              <div className="flex items-start gap-2">
+                                <TrendingUp className="w-4 h-4 text-emerald-500 mt-0.5" />
+                                <div>
+                                  <h4 className="font-black text-stone-900">
+                                    {aiTrendLanguage === 'ja' ? (trend.keyword_ja || trend.topic_ja) : (trend.keyword_en || trend.topic_en)}
+                                  </h4>
+                                  <p className="mt-1 text-xs font-semibold text-stone-500">
+                                    {aiTrendLanguage === 'ja' ? trend.topic_ja : trend.topic_en}
+                                  </p>
+                                </div>
                               </div>
-                              <span className="text-[10px] font-black bg-stone-50 text-stone-500 px-2 py-1 rounded-lg uppercase">
+                              <span className="text-[10px] font-black bg-stone-50 text-stone-500 px-2 py-1 rounded-lg uppercase whitespace-nowrap">
                                 {trend.category}
                               </span>
                             </div>
+                            {!!((aiTrendLanguage === 'ja' ? trend.examples_ja : trend.examples_en)?.length) && (
+                              <p className="text-xs text-stone-500 leading-relaxed mb-2">
+                                {aiTrendLanguage === 'ja' ? '具体例: ' : 'Examples: '}
+                                {(aiTrendLanguage === 'ja' ? trend.examples_ja : trend.examples_en)?.join(' / ')}
+                              </p>
+                            )}
                             <p className="text-sm text-stone-500 leading-relaxed">
                               {aiTrendLanguage === 'ja' ? trend.description_ja : trend.description_en}
                             </p>
