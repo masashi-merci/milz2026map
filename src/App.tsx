@@ -65,6 +65,42 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const AI_CACHE_PREFIX = 'milz_ai_cache_v1';
+const GEO_CACHE_PREFIX = 'milz_geo_cache_v1';
+
+function normalizeCacheText(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function readCache<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { expiresAt?: number; value?: T };
+    if (!parsed?.expiresAt || parsed.expiresAt < Date.now()) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return parsed.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache<T>(key: string, value: T, ttlMs: number) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ value, expiresAt: Date.now() + ttlMs }));
+  } catch {}
+}
+
+function getAiCacheKey(mode: 'recommend' | 'trend', location: string, category: string) {
+  return `${AI_CACHE_PREFIX}:${mode}:${normalizeCacheText(location)}:${normalizeCacheText(category || 'general')}`;
+}
+
+function getGeocodeCacheKey(address: string) {
+  return `${GEO_CACHE_PREFIX}:${normalizeCacheText(address)}`;
+}
+
 // Fix Leaflet icon issue
 // @ts-ignore
 delete L.Icon.Default.prototype._getIconUrl;
@@ -727,19 +763,44 @@ export default function App() {
   const [modalAddress, setModalAddress] = useState('');
   const [isGeocoding, setIsGeocoding] = useState(false);
 
+  const getAuthHeaders = async () => {
+    const client = getSupabase();
+    const session = await client?.auth.getSession();
+    const accessToken = session?.data?.session?.access_token;
+
+    return {
+      'Content-Type': 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    } as Record<string, string>;
+  };
+
   const handleModalAddressSearch = async () => {
-    if (!modalAddress.trim()) return;
+    const address = modalAddress.trim();
+    if (!address) return;
+
+    const cacheKey = getGeocodeCacheKey(address);
+    const cached = readCache<{ lat: number; lng: number }>(cacheKey);
+    if (cached?.lat && cached?.lng) {
+      setNewPlacePos({ lat: cached.lat, lng: cached.lng });
+      mapRef.current?.flyTo([cached.lat, cached.lng], 16);
+      return;
+    }
+
     setIsGeocoding(true);
     try {
       const response = await fetch('/api/ai/geocode', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: modalAddress })
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ address }),
       });
 
-      if (!response.ok) throw new Error('Failed to geocode');
+      if (!response.ok) {
+        throw new Error('Failed to geocode address');
+      }
+
       const coords = await response.json();
       if (coords.lat && coords.lng) {
+        writeCache(cacheKey, { lat: coords.lat, lng: coords.lng }, 1000 * 60 * 60 * 24 * 30);
         setNewPlacePos({ lat: coords.lat, lng: coords.lng });
         mapRef.current?.flyTo([coords.lat, coords.lng], 16);
       }
@@ -796,31 +857,24 @@ export default function App() {
   const uploadToR2 = async (file: File): Promise<string | null> => {
     try {
       setUploading(true);
-      // 1. Get presigned URL from our server
+
+      const formData = new FormData();
+      formData.append('file', file);
+
       const response = await fetch('/api/storage/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName: file.name,
-          contentType: file.type
-        })
+        body: formData,
       });
 
-      if (!response.ok) throw new Error('Failed to get presigned URL');
-      const { signedUrl, publicUrl } = await response.json();
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to upload image');
+      }
 
-      // 2. Upload directly to R2
-      const uploadResponse = await fetch(signedUrl, {
-        method: 'PUT',
-        body: file,
-        headers: { 'Content-Type': file.type }
-      });
-
-      if (!uploadResponse.ok) throw new Error('Upload to R2 failed');
-
-      return publicUrl;
+      const data = await response.json();
+      return data.publicUrl ?? null;
     } catch (error) {
-      console.error("R2 Upload Error:", error);
+      console.error('R2 Upload Error:', error);
       return null;
     } finally {
       setUploading(false);
@@ -1075,17 +1129,29 @@ export default function App() {
     const fullAddress = `${country} ${prefecture} ${municipality} ${address}`.trim();
     if (!fullAddress) return;
 
+    const cacheKey = getGeocodeCacheKey(fullAddress);
+    const cached = readCache<{ lat: number; lng: number }>(cacheKey);
+    if (cached?.lat && cached?.lng) {
+      mapRef.current?.flyTo([cached.lat, cached.lng], 14);
+      setIsFiltering(false);
+      return;
+    }
+
     setAiLoading(true);
     try {
       const response = await fetch('/api/ai/geocode', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: fullAddress })
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ address: fullAddress }),
       });
 
-      if (!response.ok) throw new Error('Failed to geocode');
+      if (!response.ok) {
+        throw new Error('Failed to geocode address');
+      }
+
       const coords = await response.json();
       if (coords.lat && coords.lng) {
+        writeCache(cacheKey, { lat: coords.lat, lng: coords.lng }, 1000 * 60 * 60 * 24 * 30);
         mapRef.current?.flyTo([coords.lat, coords.lng], 14);
         setIsFiltering(false);
       }
@@ -1100,32 +1166,36 @@ export default function App() {
     setAiLoading(true);
 
     try {
-      const { country, prefecture, municipality, address } = locationFilter;
-      const locationStr = `${country} ${prefecture} ${municipality} ${address}`.trim() || "Current map area";
+      const { country, prefecture, municipality } = locationFilter;
+      const locationStr = `${country} ${prefecture} ${municipality}`.trim() || "Current map area";
+      const category = aiTrendCategory || 'general';
+      const cacheKey = getAiCacheKey(aiMode, locationStr, category);
+      const cached = readCache<AIResults>(cacheKey);
+      if (cached) {
+        setAiResults(cached);
+        setAiLoading(false);
+        return;
+      }
 
       const response = await fetch('/api/ai/query', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           mode: aiMode,
-          trendCategory: aiTrendCategory,
-          location: {
-            country,
-            prefecture,
-            municipality,
-            address,
-            label: locationStr
-          },
-          places: places.slice(0, 300)
-        })
+          location: locationStr,
+          category,
+        }),
       });
 
-      if (!response.ok) throw new Error('Failed to fetch AI results');
+      if (!response.ok) {
+        throw new Error('Failed to fetch AI results');
+      }
+
       const results = await response.json();
+      writeCache(cacheKey, results, aiMode === 'recommend' ? 1000 * 60 * 60 * 24 * 7 : 1000 * 60 * 60 * 24);
       setAiResults(results);
     } catch (error) {
       console.error('AI error:', error);
-      showToast('おすすめ情報の取得に失敗しました。', 'error');
     } finally {
       setAiLoading(false);
     }

@@ -21,6 +21,15 @@
       ]
     },
     "allowImportingTsExtensions": true,
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "types": [
+      "node"
+    ]
   }
+,
+  "include": ["src", "functions", "src/vite-env.d.ts"],
+  "exclude": ["server.ts", "dist", "node_modules"]
 }
