@@ -215,6 +215,60 @@ const MAP_STYLES = {
   }
 };
 
+
+const REGION_PRESETS = {
+  ny: {
+    key: 'ny',
+    name: 'New York State',
+    country: 'USA',
+    prefecture: 'New York',
+    municipality: 'Manhattan',
+    mapCenter: [40.7831, -73.9712] as [number, number],
+    mapZoom: 12,
+    lockCountry: true,
+    lockPrefecture: true,
+  },
+  hawaii: {
+    key: 'hawaii',
+    name: 'Hawaii',
+    country: 'USA',
+    prefecture: 'Hawaii',
+    municipality: 'Honolulu',
+    mapCenter: [21.3069, -157.8583] as [number, number],
+    mapZoom: 12,
+    lockCountry: true,
+    lockPrefecture: true,
+  },
+  tokyo: {
+    key: 'tokyo',
+    name: 'Tokyo',
+    country: 'Japan',
+    prefecture: 'Tokyo',
+    municipality: 'Shibuya',
+    mapCenter: [35.6595, 139.7005] as [number, number],
+    mapZoom: 12,
+    lockCountry: true,
+    lockPrefecture: true,
+  },
+} as const;
+
+const ACTIVE_REGION = REGION_PRESETS.ny;
+
+function normalizeLocationFilter(input: { country: string; prefecture: string; municipality: string; address: string }) {
+  return {
+    country: ACTIVE_REGION.lockCountry ? ACTIVE_REGION.country : input.country,
+    prefecture: ACTIVE_REGION.lockPrefecture ? ACTIVE_REGION.prefecture : input.prefecture,
+    municipality: input.municipality?.trim() || ACTIVE_REGION.municipality,
+    address: input.address?.trim() || '',
+  };
+}
+
+function buildScopedLocationString(input: { country: string; prefecture: string; municipality: string; address?: string }) {
+  const scoped = normalizeLocationFilter({ ...input, address: input.address || '' });
+  return [scoped.country, scoped.prefecture, scoped.municipality, scoped.address].filter(Boolean).join(' ').trim();
+}
+
+
 const CATEGORY_CONFIG: Record<string, { icon: any, color: string, bg: string }> = {
   'レストラン': { icon: Utensils, color: '#000000', bg: '#FFFFFF' },
   'カフェ': { icon: Coffee, color: '#000000', bg: '#FFFFFF' },
@@ -285,12 +339,12 @@ export default function App() {
     localStorage.setItem('milz_map_style', mapStyle);
   }, [mapStyle]);
   
-  const [locationFilter, setLocationFilter] = useState({
-    country: '日本',
-    prefecture: '',
-    municipality: '',
+  const [locationFilter, setLocationFilter] = useState(() => normalizeLocationFilter({
+    country: ACTIVE_REGION.country,
+    prefecture: ACTIVE_REGION.prefecture,
+    municipality: ACTIVE_REGION.municipality,
     address: ''
-  });
+  }));
 
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMode, setAiMode] = useState<'recommend' | 'trend'>('recommend');
@@ -1111,8 +1165,8 @@ export default function App() {
   };
 
   const handleLocationSearch = async () => {
-    const { country, prefecture, municipality, address } = locationFilter;
-    const fullAddress = `${country} ${prefecture} ${municipality} ${address}`.trim();
+    const scopedFilter = normalizeLocationFilter(locationFilter);
+    const fullAddress = buildScopedLocationString(scopedFilter);
     if (!fullAddress) return;
 
     const cacheKey = getGeocodeCacheKey(fullAddress);
@@ -1152,8 +1206,7 @@ export default function App() {
     setAiLoading(true);
 
     try {
-      const { country, prefecture, municipality } = locationFilter;
-      const locationStr = `${country} ${prefecture} ${municipality}`.trim() || "Current map area";
+      const locationStr = buildScopedLocationString(locationFilter) || `${ACTIVE_REGION.country} ${ACTIVE_REGION.prefecture} ${ACTIVE_REGION.municipality}`;
       const category = aiTrendCategory || 'general';
       const cacheKey = getAiCacheKey(aiMode, locationStr, category);
       const cached = readCache<AIResults>(cacheKey);
@@ -1456,20 +1509,20 @@ export default function App() {
                           type="text"
                           placeholder="Country"
                           value={locationFilter.country}
-                          onChange={(e) => setLocationFilter(prev => ({ ...prev, country: e.target.value }))}
-                          className="w-full px-4 py-3 bg-stone-50 border border-stone-100 rounded-2xl text-sm focus:outline-none"
+                          readOnly
+                          className="w-full px-4 py-3 bg-stone-100 border border-stone-100 rounded-2xl text-sm text-stone-500 cursor-not-allowed"
                         />
                         <div className="grid grid-cols-2 gap-3">
                           <input
                             type="text"
-                            placeholder="Prefecture"
+                            placeholder="State"
                             value={locationFilter.prefecture}
-                            onChange={(e) => setLocationFilter(prev => ({ ...prev, prefecture: e.target.value }))}
-                            className="w-full px-4 py-3 bg-stone-50 border border-stone-100 rounded-2xl text-sm focus:outline-none"
+                            readOnly
+                            className="w-full px-4 py-3 bg-stone-100 border border-stone-100 rounded-2xl text-sm text-stone-500 cursor-not-allowed"
                           />
                           <input
                             type="text"
-                            placeholder="Municipality"
+                            placeholder="City / Area"
                             value={locationFilter.municipality}
                             onChange={(e) => setLocationFilter(prev => ({ ...prev, municipality: e.target.value }))}
                             className="w-full px-4 py-3 bg-stone-50 border border-stone-100 rounded-2xl text-sm focus:outline-none"
@@ -1484,7 +1537,7 @@ export default function App() {
                         />
                         <button
                           onClick={() => {
-                            setLocationFilter({ country: '', prefecture: '', municipality: '', address: '' });
+                            setLocationFilter(normalizeLocationFilter({ country: ACTIVE_REGION.country, prefecture: ACTIVE_REGION.prefecture, municipality: ACTIVE_REGION.municipality, address: '' }));
                             setIsFiltering(false);
                           }}
                           className="w-full py-3 text-[10px] font-black text-stone-400 hover:text-stone-900 transition-colors"
@@ -1506,8 +1559,8 @@ export default function App() {
               </div>
 
               <MapContainer 
-                center={[35.6812, 139.7671]} 
-                zoom={13} 
+                center={ACTIVE_REGION.mapCenter} 
+                zoom={ACTIVE_REGION.mapZoom} 
                 className={cn(
                   "h-full w-full transition-all duration-700",
                   mapStyle === 'guide_mono' && "guide-map-theme"
@@ -1720,7 +1773,7 @@ export default function App() {
                   AI Concierge
                   <Sparkles className="w-6 h-6 text-emerald-500" />
                 </h2>
-                <p className="text-stone-500 font-medium">Discover hidden gems and local trends.</p>
+                <p className="text-stone-500 font-medium">Start with New York State and expand region-by-region later.</p>
               </div>
 
               {/* Location Filters */}
@@ -1729,25 +1782,26 @@ export default function App() {
                   <MapPinned className="w-4 h-4" />
                   <span className="text-[10px] font-black uppercase tracking-widest">Location Filter</span>
                 </div>
+                <p className="text-xs text-stone-400">Country and state are fixed to {ACTIVE_REGION.name} for launch. Change only the city / area.</p>
                 <div className="grid grid-cols-1 gap-3">
                   <input
                     type="text"
-                    placeholder="Country (e.g. Japan)"
+                    placeholder="Country"
                     value={locationFilter.country}
-                    onChange={(e) => setLocationFilter(prev => ({ ...prev, country: e.target.value }))}
-                    className="w-full px-4 py-3 bg-stone-50 border border-stone-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/5"
+                    readOnly
+                    className="w-full px-4 py-3 bg-stone-100 border border-stone-100 rounded-2xl text-sm text-stone-500 cursor-not-allowed"
                   />
                   <div className="grid grid-cols-2 gap-3">
                     <input
                       type="text"
-                      placeholder="Prefecture"
+                      placeholder="State"
                       value={locationFilter.prefecture}
-                      onChange={(e) => setLocationFilter(prev => ({ ...prev, prefecture: e.target.value }))}
-                      className="w-full px-4 py-3 bg-stone-50 border border-stone-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/5"
+                      readOnly
+                      className="w-full px-4 py-3 bg-stone-100 border border-stone-100 rounded-2xl text-sm text-stone-500 cursor-not-allowed"
                     />
                     <input
                       type="text"
-                      placeholder="Municipality"
+                      placeholder="City / Area"
                       value={locationFilter.municipality}
                       onChange={(e) => setLocationFilter(prev => ({ ...prev, municipality: e.target.value }))}
                       className="w-full px-4 py-3 bg-stone-50 border border-stone-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/5"
