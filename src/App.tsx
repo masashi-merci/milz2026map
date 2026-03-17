@@ -2031,11 +2031,11 @@ export default function App() {
 
               {aiResults && (
                 <div className="space-y-8">
-                  {aiMode === 'recommend' && aiResults.recommendations && (
+                  {aiMode === 'recommend' && recommendationCards.length > 0 && (
                     <section className="space-y-4">
                       <h3 className="text-xs font-black text-stone-400 uppercase tracking-widest">{t.recommendedSpots}</h3>
                       <div className="grid grid-cols-1 gap-4">
-                        {aiResults.recommendations.map((rec, i) => (
+                        {recommendationCards.map((rec, i) => (
                           <div key={i} className="bg-white p-6 rounded-3xl border border-stone-100 shadow-sm">
                             <div className="flex items-start justify-between mb-2">
                               <h4 className="font-black text-stone-900">{uiLanguage === 'ja' ? (rec.name_ja || rec.name_en) : (rec.name_en || rec.name_ja)}</h4>
