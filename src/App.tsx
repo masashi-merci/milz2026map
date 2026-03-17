@@ -64,7 +64,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const AI_CACHE_PREFIX = 'milz_ai_cache_v5';
+const AI_CACHE_PREFIX = 'milz_ai_cache_v6';
 const GEO_CACHE_PREFIX = 'milz_geo_cache_v1';
 
 function normalizeCacheText(value: string) {
@@ -158,6 +158,98 @@ interface AIResults {
     examples_ja?: string[];
     examples_en?: string[];
   }[];
+}
+
+
+type RecommendationCard = {
+  name_ja: string;
+  name_en: string;
+  reason_ja: string;
+  reason_en: string;
+  category: string;
+};
+
+function curatedRecommendationFallback(location: string): RecommendationCard[] {
+  const normalized = normalizeCacheText(location);
+  if (normalized.includes('manhattan') || normalized.includes('new york')) {
+    return [
+      {
+        name_ja: 'Times Square',
+        name_en: 'Times Square',
+        reason_ja: 'ブロードウェイやミッドタウン観光の中心で、初回訪問でも動線を組みやすい定番ランドマークです。',
+        reason_en: 'A classic Midtown landmark that is easy to work into a first New York route.',
+        category: 'LANDMARK',
+      },
+      {
+        name_ja: 'Central Park',
+        name_en: 'Central Park',
+        reason_ja: '街歩きの合間に自然と景色をまとめて楽しめる、最も使いやすい公園スポットです。',
+        reason_en: 'The city’s most flexible park stop for scenery, rest, and neighborhood walking.',
+        category: 'PARK',
+      },
+      {
+        name_ja: 'Grand Central Terminal',
+        name_en: 'Grand Central Terminal',
+        reason_ja: '建築自体が見どころで、周辺エリアへの移動もしやすい代表的な交通拠点です。',
+        reason_en: 'A transit hub that doubles as an architectural destination and a practical routing point.',
+        category: 'TRANSIT',
+      },
+      {
+        name_ja: 'The Met Cloisters',
+        name_en: 'The Met Cloisters',
+        reason_ja: '北側で静かに過ごしたい時に向いており、通常のミッドタウン観光と違う雰囲気を楽しめます。',
+        reason_en: 'A calmer uptown destination that offers a different mood from standard Midtown sightseeing.',
+        category: 'LANDMARK',
+      },
+      {
+        name_ja: "Katz's Delicatessen",
+        name_en: "Katz's Delicatessen",
+        reason_ja: 'ニューヨークらしい食体験として分かりやすく、Lower East Side の散策とも相性が良い名店です。',
+        reason_en: 'An easy-to-understand New York food stop that fits naturally into a Lower East Side walk.',
+        category: 'RESTAURANT',
+      },
+    ];
+  }
+  return [
+    {
+      name_ja: 'Downtown',
+      name_en: 'Downtown',
+      reason_ja: '最初の候補が不足しているため、中心部から回りやすい定番エリアを表示しています。',
+      reason_en: 'Showing an easy downtown fallback because the primary recommendations were incomplete.',
+      category: 'AREA',
+    },
+  ];
+}
+
+function normalizeRecommendationCards(results: AIResults | null, location: string): RecommendationCard[] {
+  const raw = Array.isArray(results?.recommendations) ? results!.recommendations : [];
+  const mapped = raw
+    .map((rec: any) => ({
+      name_ja: String(rec?.name_ja || rec?.title_ja || rec?.title || rec?.name || rec?.name_en || '').trim(),
+      name_en: String(rec?.name_en || rec?.title_en || rec?.title || rec?.name || rec?.name_ja || '').trim(),
+      reason_ja: String(rec?.reason_ja || rec?.description_ja || rec?.description || rec?.reason || rec?.reason_en || '').trim(),
+      reason_en: String(rec?.reason_en || rec?.description_en || rec?.description || rec?.reason || rec?.reason_ja || '').trim(),
+      category: String(rec?.category || 'PLACE').trim() || 'PLACE',
+    }))
+    .filter((rec) => rec.name_ja || rec.name_en)
+    .map((rec) => ({
+      ...rec,
+      reason_ja: rec.reason_ja || rec.reason_en || 'このエリアで立ち寄りやすいおすすめ候補です。',
+      reason_en: rec.reason_en || rec.reason_ja || 'A practical recommendation for this area.',
+    }));
+
+  if (mapped.length >= 5) return mapped.slice(0, 5);
+
+  const fallback = curatedRecommendationFallback(location);
+  const seen = new Set(mapped.map((rec) => (rec.name_en || rec.name_ja).toLowerCase()));
+  for (const rec of fallback) {
+    const key = (rec.name_en || rec.name_ja).toLowerCase();
+    if (seen.has(key)) continue;
+    mapped.push(rec);
+    seen.add(key);
+    if (mapped.length >= 5) break;
+  }
+  return mapped.slice(0, 5);
 }
 
 // Custom Map Events Component
@@ -1314,6 +1406,8 @@ export default function App() {
   });
 
   const favoritePlaces = places.filter(p => favorites.some(f => f.place_id === p.id));
+
+  const recommendationCards = normalizeRecommendationCards(aiResults, buildScopedLocationString(locationFilter) || `${ACTIVE_REGION.country} ${ACTIVE_REGION.prefecture} ${ACTIVE_REGION.municipality}`);
 
   if (isConfigMissing) {
     return (
