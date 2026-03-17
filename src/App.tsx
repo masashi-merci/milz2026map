@@ -37,7 +37,6 @@ import {
   TrendingUp,
   AlertCircle,
   Hash,
-  Languages,
   Coffee,
   Gift,
   Ticket,
@@ -65,7 +64,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const AI_CACHE_PREFIX = 'milz_ai_cache_v3';
+const AI_CACHE_PREFIX = 'milz_ai_cache_v4';
 const GEO_CACHE_PREFIX = 'milz_geo_cache_v1';
 
 function normalizeCacheText(value: string) {
@@ -139,8 +138,10 @@ interface Favorite {
 
 interface AIResults {
   recommendations?: {
-    name: string;
-    reason: string;
+    name_ja: string;
+    name_en: string;
+    reason_ja: string;
+    reason_en: string;
     category: string;
     lat: number;
     lng: number;
@@ -269,6 +270,57 @@ function buildScopedLocationString(input: { country: string; prefecture: string;
 }
 
 
+const UI_TEXT = {
+  ja: {
+    searchSpots: 'スポットを検索...',
+    refreshMap: '地図を更新',
+    aiTitle: 'MILZ AI',
+    aiSubtitle: 'おすすめスポットと旬の話題をすばやくチェック。',
+    locationFilter: 'ロケーションフィルター',
+    locationNote: `${ACTIVE_REGION.name} で先行公開中。変更できるのは City / Area のみです。`,
+    cityArea: 'City / Area',
+    addressOptional: '住所・ランドマーク（任意）',
+    recommend: 'RECOMMEND',
+    trends: 'TRENDS',
+    getRecommendations: 'おすすめを取得',
+    getTrends: 'このエリアの旬を取得',
+    recommendedSpots: 'おすすめスポット',
+    localTrends: 'ローカルトレンド',
+    mapStyleSettings: '地図テーマ設定',
+    signOut: 'サインアウト',
+    examples: '具体例: ',
+    allSpots: 'すべてのスポット',
+    favorites: 'お気に入り',
+    profile: 'プロフィール',
+    original: 'オリジナル',
+    guide: 'ガイドデザイン',
+  },
+  en: {
+    searchSpots: 'Search spots...',
+    refreshMap: 'Refresh map',
+    aiTitle: 'MILZ AI',
+    aiSubtitle: 'Quick recommendations and local trends for the area.',
+    locationFilter: '{t.locationFilter}',
+    locationNote: `Launching first in ${ACTIVE_REGION.name}. Change only City / Area.`,
+    cityArea: 'City / Area',
+    addressOptional: 'Address or landmark (optional)',
+    recommend: 'RECOMMEND',
+    trends: 'TRENDS',
+    getRecommendations: 'GET RECOMMENDATIONS',
+    getTrends: 'TREND IN THE AREA',
+    recommendedSpots: '{t.recommendedSpots}',
+    localTrends: '{t.localTrends}',
+    mapStyleSettings: '{t.mapStyleSettings}',
+    signOut: '{t.signOut}',
+    examples: 'Examples: ',
+    allSpots: 'All Spots',
+    favorites: 'Favorites',
+    profile: 'Profile',
+    original: 'Original',
+    guide: 'Guide Design',
+  }
+} as const;
+
 const CATEGORY_CONFIG: Record<string, { icon: any, color: string, bg: string }> = {
   'レストラン': { icon: Utensils, color: '#000000', bg: '#FFFFFF' },
   'カフェ': { icon: Coffee, color: '#000000', bg: '#FFFFFF' },
@@ -338,6 +390,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('milz_map_style', mapStyle);
   }, [mapStyle]);
+
+  useEffect(() => {
+    localStorage.setItem('milz_ui_language', uiLanguage);
+  }, [uiLanguage]);
   
   const [locationFilter, setLocationFilter] = useState(() => normalizeLocationFilter({
     country: ACTIVE_REGION.country,
@@ -349,7 +405,10 @@ export default function App() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMode, setAiMode] = useState<'recommend' | 'trend'>('recommend');
   const [aiTrendCategory, setAiTrendCategory] = useState('all');
-  const [aiTrendLanguage, setAiTrendLanguage] = useState<'ja' | 'en'>('ja');
+  const [uiLanguage, setUiLanguage] = useState<'ja' | 'en'>(() => {
+    const saved = localStorage.getItem('milz_ui_language');
+    return saved === 'en' ? 'en' : 'ja';
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [showSqlModal, setShowSqlModal] = useState(false);
@@ -1240,6 +1299,8 @@ export default function App() {
     }
   };
 
+  const t = UI_TEXT[uiLanguage];
+
   const filteredPlaces = places.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -1432,10 +1493,24 @@ export default function App() {
             <button 
               onClick={() => fetchPlaces()}
               className="p-2 hover:bg-stone-100 rounded-xl transition-colors active:scale-95"
-              title="Refresh Map"
+              title={t.refreshMap}
             >
               <Loader2 className={cn("w-5 h-5 text-stone-400", isFetchingRef.current && "animate-spin")} />
             </button>
+            <div className="flex items-center p-1 bg-stone-100 rounded-xl">
+              <button
+                onClick={() => setUiLanguage('ja')}
+                className={cn("px-3 py-1.5 text-[10px] font-black rounded-lg transition-all", uiLanguage === 'ja' ? "bg-white text-stone-900 shadow-sm" : "text-stone-400")}
+              >
+                JP
+              </button>
+              <button
+                onClick={() => setUiLanguage('en')}
+                className={cn("px-3 py-1.5 text-[10px] font-black rounded-lg transition-all", uiLanguage === 'en' ? "bg-white text-stone-900 shadow-sm" : "text-stone-400")}
+              >
+                EN
+              </button>
+            </div>
             <div className="relative">
               <button 
                 onClick={() => setActiveTab('profile')}
@@ -1477,7 +1552,7 @@ export default function App() {
                     <Search className="w-5 h-5 text-stone-400 mr-3" />
                     <input
                       type="text"
-                      placeholder="Search spots..."
+                      placeholder={t.searchSpots}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="bg-transparent border-none outline-none text-sm w-full font-medium"
@@ -1522,7 +1597,7 @@ export default function App() {
                           />
                           <input
                             type="text"
-                            placeholder="City / Area"
+                            placeholder={t.cityArea}
                             value={locationFilter.municipality}
                             onChange={(e) => setLocationFilter(prev => ({ ...prev, municipality: e.target.value }))}
                             className="w-full px-4 py-3 bg-stone-50 border border-stone-100 rounded-2xl text-sm focus:outline-none"
@@ -1668,7 +1743,7 @@ export default function App() {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
                 <input 
                   type="text" 
-                  placeholder="Search spots..."
+                  placeholder={t.searchSpots}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-white border border-stone-100 rounded-2xl text-sm font-medium shadow-sm focus:ring-2 focus:ring-stone-200 outline-none transition-all"
@@ -1683,7 +1758,7 @@ export default function App() {
                     listFilter === 'all' ? "bg-stone-900 text-white" : "text-stone-400"
                   )}
                 >
-                  ALL SPOTS
+                  {t.allSpots.toUpperCase()}
                 </button>
                 <button 
                   onClick={() => setListFilter('favorites')}
@@ -1692,7 +1767,7 @@ export default function App() {
                     listFilter === 'favorites' ? "bg-stone-900 text-white" : "text-stone-400"
                   )}
                 >
-                  FAVORITES
+                  {t.favorites.toUpperCase()}
                 </button>
               </div>
 
@@ -1770,19 +1845,19 @@ export default function App() {
             >
               <div className="space-y-2">
                 <h2 className="text-3xl font-black text-stone-900 flex items-center gap-3">
-                  AI Concierge
+                  {t.aiTitle}
                   <Sparkles className="w-6 h-6 text-emerald-500" />
                 </h2>
                 <p className="text-stone-500 font-medium">Start with New York State and expand region-by-region later.</p>
               </div>
 
-              {/* Location Filters */}
+              {/* {t.locationFilter}s */}
               <div className="bg-white p-6 rounded-[2rem] border border-stone-100 shadow-sm space-y-4">
                 <div className="flex items-center gap-2 text-stone-400 mb-2">
                   <MapPinned className="w-4 h-4" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Location Filter</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">{t.locationFilter}</span>
                 </div>
-                <p className="text-xs text-stone-400">Country and state are fixed to {ACTIVE_REGION.name} for launch. Change only the city / area.</p>
+                <p className="text-xs text-stone-400">{t.locationNote}</p>
                 <div className="grid grid-cols-1 gap-3">
                   <input
                     type="text"
@@ -1801,7 +1876,7 @@ export default function App() {
                     />
                     <input
                       type="text"
-                      placeholder="City / Area"
+                      placeholder={t.cityArea}
                       value={locationFilter.municipality}
                       onChange={(e) => setLocationFilter(prev => ({ ...prev, municipality: e.target.value }))}
                       className="w-full px-4 py-3 bg-stone-50 border border-stone-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/5"
@@ -1819,7 +1894,7 @@ export default function App() {
                     aiMode === 'recommend' ? "bg-white text-stone-900 shadow-sm" : "text-stone-400"
                   )}
                 >
-                  RECOMMEND
+                  {t.recommend}
                 </button>
                 <button
                   onClick={() => setAiMode('trend')}
@@ -1828,7 +1903,7 @@ export default function App() {
                     aiMode === 'trend' ? "bg-white text-stone-900 shadow-sm" : "text-stone-400"
                   )}
                 >
-                  TRENDS
+                  {t.trends}
                 </button>
               </div>
 
@@ -1848,26 +1923,6 @@ export default function App() {
                       </button>
                     ))}
                   </div>
-                  <div className="flex p-1 bg-stone-100 rounded-xl w-fit">
-                    <button
-                      onClick={() => setAiTrendLanguage('ja')}
-                      className={cn(
-                        "px-4 py-1.5 text-[10px] font-black rounded-lg transition-all",
-                        aiTrendLanguage === 'ja' ? "bg-white text-stone-900 shadow-sm" : "text-stone-400"
-                      )}
-                    >
-                      JP
-                    </button>
-                    <button
-                      onClick={() => setAiTrendLanguage('en')}
-                      className={cn(
-                        "px-4 py-1.5 text-[10px] font-black rounded-lg transition-all",
-                        aiTrendLanguage === 'en' ? "bg-white text-stone-900 shadow-sm" : "text-stone-400"
-                      )}
-                    >
-                      EN
-                    </button>
-                  </div>
                 </div>
               )}
 
@@ -1877,24 +1932,24 @@ export default function App() {
                 className="w-full p-6 bg-stone-900 text-white rounded-[2rem] font-black flex items-center justify-center gap-3 shadow-xl shadow-stone-900/20 active:scale-95 transition-all disabled:opacity-50"
               >
                 {aiLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Sparkles className="w-6 h-6" />}
-                {aiMode === 'recommend' ? 'GET RECOMMENDATIONS' : 'TREND IN THE AREA'}
+                {aiMode === 'recommend' ? t.getRecommendations : t.getTrends}
               </button>
 
               {aiResults && (
                 <div className="space-y-8">
                   {aiMode === 'recommend' && aiResults.recommendations && (
                     <section className="space-y-4">
-                      <h3 className="text-xs font-black text-stone-400 uppercase tracking-widest">Recommended Spots</h3>
+                      <h3 className="text-xs font-black text-stone-400 uppercase tracking-widest">{t.recommendedSpots}</h3>
                       <div className="grid grid-cols-1 gap-4">
                         {aiResults.recommendations.map((rec, i) => (
                           <div key={i} className="bg-white p-6 rounded-3xl border border-stone-100 shadow-sm">
                             <div className="flex items-start justify-between mb-2">
-                              <h4 className="font-black text-stone-900">{rec.name}</h4>
+                              <h4 className="font-black text-stone-900">{uiLanguage === 'ja' ? rec.name_ja : rec.name_en}</h4>
                               <span className="text-[10px] font-black bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg uppercase">
                                 {rec.category}
                               </span>
                             </div>
-                            <p className="text-sm text-stone-500 leading-relaxed">{rec.reason}</p>
+                            <p className="text-sm text-stone-500 leading-relaxed">{uiLanguage === 'ja' ? rec.reason_ja : rec.reason_en}</p>
                           </div>
                         ))}
                       </div>
@@ -1903,7 +1958,7 @@ export default function App() {
 
                   {aiMode === 'trend' && aiResults.trends && (
                     <section className="space-y-4">
-                      <h3 className="text-xs font-black text-stone-400 uppercase tracking-widest">Local Trends</h3>
+                      <h3 className="text-xs font-black text-stone-400 uppercase tracking-widest">{t.localTrends}</h3>
                       <div className="grid grid-cols-1 gap-4">
                         {aiResults.trends.map((trend, i) => (
                           <div key={i} className="bg-white p-6 rounded-3xl border border-stone-100 shadow-sm">
@@ -1912,10 +1967,10 @@ export default function App() {
                                 <TrendingUp className="w-4 h-4 text-emerald-500 mt-0.5" />
                                 <div>
                                   <h4 className="font-black text-stone-900">
-                                    {aiTrendLanguage === 'ja' ? (trend.keyword_ja || trend.topic_ja) : (trend.keyword_en || trend.topic_en)}
+                                    {uiLanguage === 'ja' ? (trend.keyword_ja || trend.topic_ja) : (trend.keyword_en || trend.topic_en)}
                                   </h4>
                                   <p className="mt-1 text-xs font-semibold text-stone-500">
-                                    {aiTrendLanguage === 'ja' ? trend.topic_ja : trend.topic_en}
+                                    {uiLanguage === 'ja' ? trend.topic_ja : trend.topic_en}
                                   </p>
                                 </div>
                               </div>
@@ -1923,14 +1978,8 @@ export default function App() {
                                 {trend.category}
                               </span>
                             </div>
-                            {!!((aiTrendLanguage === 'ja' ? trend.examples_ja : trend.examples_en)?.length) && (
-                              <p className="text-xs text-stone-500 leading-relaxed mb-2">
-                                {aiTrendLanguage === 'ja' ? '具体例: ' : 'Examples: '}
-                                {(aiTrendLanguage === 'ja' ? trend.examples_ja : trend.examples_en)?.join(' / ')}
-                              </p>
-                            )}
                             <p className="text-sm text-stone-500 leading-relaxed">
-                              {aiTrendLanguage === 'ja' ? trend.description_ja : trend.description_en}
+                              {uiLanguage === 'ja' ? trend.description_ja : trend.description_en}
                             </p>
                             <div className="mt-4 flex items-center gap-2">
                               <div className="flex-1 h-1 bg-stone-100 rounded-full overflow-hidden">
@@ -1990,7 +2039,7 @@ export default function App() {
                 <div className="space-y-4 text-left">
                   <div className="flex items-center gap-2 px-1">
                     <Globe className="w-4 h-4 text-stone-400" />
-                    <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Map Style Settings</span>
+                    <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">{t.mapStyleSettings}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     {(Object.keys(MAP_STYLES) as Array<keyof typeof MAP_STYLES>).map((styleKey) => (
@@ -2004,7 +2053,7 @@ export default function App() {
                             : "border-stone-100 bg-white text-stone-900 hover:border-stone-200"
                         )}
                       >
-                        <div className="font-black text-xs uppercase tracking-tighter">{MAP_STYLES[styleKey].name}</div>
+                        <div className="font-black text-xs uppercase tracking-tighter">{styleKey === 'original' ? t.original : t.guide}</div>
                         <div className={cn(
                           "text-[9px] font-medium leading-tight",
                           mapStyle === styleKey ? "text-stone-400" : "text-stone-400"
@@ -2021,7 +2070,7 @@ export default function App() {
                     onClick={handleLogout}
                     className="w-full py-3 text-xs font-black text-rose-500 hover:text-rose-600 transition-colors uppercase tracking-widest border border-rose-100 rounded-xl"
                   >
-                    Sign Out
+                    {t.signOut}
                   </button>
                   <button
                     onClick={async () => {

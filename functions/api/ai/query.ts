@@ -1,6 +1,5 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
-import { concretizeTrends, type TrendItem } from '../../_shared/trend-place-map';
 
 export interface Env {
   GEMINI_API_KEY: string;
@@ -119,10 +118,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
     if (mode === 'recommend') {
       prompt = [
-        'You are a concise local discovery assistant.',
-        `For the location "${location}", suggest exactly 5 practical spots.`,
-        'Prefer stable categories such as restaurants, cafes, shops, parks, transit, and landmarks.',
-        'Keep each reason short, concrete, and under 90 characters when possible.',
+        'You are a concise bilingual local discovery assistant.',
+        `For the location "${location}", suggest exactly 5 practical places people can actually go to.`,
+        'Each item must be a real place name, landmark, venue, park, station, museum, market, or restaurant that makes sense for the area.',
+        'Return bilingual fields for Japanese and English.',
+        'The reason should be a little fuller than before: 1 to 2 practical sentences, around 90 to 160 characters in Japanese or similar detail in English.',
         'If coordinates are uncertain, return a reasonable estimate near the target area.',
         'Return JSON only.',
       ].join('\n');
@@ -135,13 +135,15 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
             items: {
               type: Type.OBJECT,
               properties: {
-                name: { type: Type.STRING },
-                reason: { type: Type.STRING },
+                name_ja: { type: Type.STRING },
+                name_en: { type: Type.STRING },
+                reason_ja: { type: Type.STRING },
+                reason_en: { type: Type.STRING },
                 category: { type: Type.STRING },
                 lat: { type: Type.NUMBER },
                 lng: { type: Type.NUMBER },
               },
-              required: ['name', 'reason', 'category', 'lat', 'lng'],
+              required: ['name_ja', 'name_en', 'reason_ja', 'reason_en', 'category', 'lat', 'lng'],
             },
           },
         },
@@ -152,11 +154,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     } else {
       prompt = [
         'You are a concise bilingual local trends assistant.',
-        `For the location "${location}" and category "${category}", provide exactly 5 local trends.`,
-        'Abstract keywords are allowed, but every trend must be convertible to specific local names. Pair topics like cafe hopping or grape picking with actual areas, facilities, or venue names.',
-        'If an exact venue is uncertain, prefer a concrete area name over an abstract topic.',
-        'Favor durable local interests, seasonal movement, events, transit, food, and shopping themes.',
-        'Keep descriptions short and practical.',
+        `For the location "${location}" and category "${category}", provide exactly 5 local trends or search-worthy topics.`,
+        'Do not force specific store or venue names for trends.',
+        'Trends should feel like the kinds of things people are currently looking up in the area: neighborhoods, happenings, seasonal topics, markets, exhibitions, food themes, events, or shopping terms.',
+        'Keep them concrete enough to search, but they can stay at the topic or area level.',
+        'Return short bilingual descriptions.',
         'Return JSON only.',
       ].join('\n');
 
@@ -208,9 +210,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     }
 
     const parsed = JSON.parse(text);
-    if (mode === 'trend' && Array.isArray(parsed?.trends)) {
-      parsed.trends = concretizeTrends(location, category, parsed.trends as TrendItem[]);
-    }
     const payload = JSON.stringify({
       ...parsed,
       generatedAt: new Date().toISOString(),
