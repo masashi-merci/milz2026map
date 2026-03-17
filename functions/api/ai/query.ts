@@ -310,8 +310,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         'Each item must include Japanese and English names, plus slightly fuller reasons in both languages.',
         'Recommendation reasons should explain why the place is good and how it fits a local route or visit plan.',
         'Return JSON only.',
-      ].join('
-');
+      ].join('\n');
 
       responseSchema = {
         type: Type.OBJECT,
@@ -344,8 +343,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         'Trends do not need store names. They should feel like things people are currently curious about in that area.',
         'Keep descriptions practical, natural, and short in both Japanese and English.',
         'Return JSON only.',
-      ].join('
-');
+      ].join('\n');
 
       responseSchema = {
         type: Type.OBJECT,
