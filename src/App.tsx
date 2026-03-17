@@ -391,6 +391,11 @@ export default function App() {
     localStorage.setItem('milz_map_style', mapStyle);
   }, [mapStyle]);
 
+  const [uiLanguage, setUiLanguage] = useState<'ja' | 'en'>(() => {
+    const saved = localStorage.getItem('milz_ui_language');
+    return saved === 'en' ? 'en' : 'ja';
+  });
+
   useEffect(() => {
     localStorage.setItem('milz_ui_language', uiLanguage);
   }, [uiLanguage]);
@@ -405,10 +410,6 @@ export default function App() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMode, setAiMode] = useState<'recommend' | 'trend'>('recommend');
   const [aiTrendCategory, setAiTrendCategory] = useState('all');
-  const [uiLanguage, setUiLanguage] = useState<'ja' | 'en'>(() => {
-    const saved = localStorage.getItem('milz_ui_language');
-    return saved === 'en' ? 'en' : 'ja';
-  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [showSqlModal, setShowSqlModal] = useState(false);
